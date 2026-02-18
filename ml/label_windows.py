@@ -155,6 +155,7 @@ def main():
 
     idx = 0
     label_idx = 0
+    drop_idx = 0
     current = {}
 
     def load_current():
@@ -268,7 +269,7 @@ def main():
         fig.text(
             0.01,
             0.93,
-            "Click channel to drop | Clear: 0",
+            "Select drop: up/down | Toggle: enter | Clear: 0",
             ha="left",
             va="top",
             fontsize=9,
@@ -279,7 +280,7 @@ def main():
         plt.draw()
 
     def on_key(event):
-        nonlocal idx, label_idx
+        nonlocal idx, label_idx, drop_idx
         if event.key == "right":
             set_offset(get_offset() + args.step)
         elif event.key == "left":
@@ -288,7 +289,21 @@ def main():
             set_offset(get_offset() + args.big_step)
         elif event.key == "shift+left":
             set_offset(get_offset() - args.big_step)
-        elif event.key in ("enter", "n"):
+        elif event.key == "up":
+            drop_idx = min(drop_idx + 1, current["channels"] - 1)
+        elif event.key == "down":
+            drop_idx = max(drop_idx - 1, 0)
+        elif event.key == "enter":
+            ch = drop_idx + 1
+            score, ch_list = current["noise"]
+            noise_key = (current["subject"], current["trial"], current["emg_file"])
+            if ch in ch_list:
+                ch_list = [c for c in ch_list if c != ch]
+            else:
+                ch_list = ch_list + [ch]
+            noise[noise_key] = (score, ch_list)
+            current["noise"] = noise[noise_key]
+        elif event.key == "n":
             persist_current_offsets()
             label_idx += 1
             if label_idx >= len(current["labels"]):
@@ -321,32 +336,12 @@ def main():
             return
         render()
 
-    def on_click(event):
-        if event.inaxes is None or event.ydata is None:
-            return
-        y_offset = current.get("y_offset")
-        if not y_offset:
-            return
-        ch_idx = int(round(event.ydata / y_offset))
-        ch_idx = max(0, min(ch_idx, current["channels"] - 1))
-        ch = ch_idx + 1
-        score, ch_list = current["noise"]
-        noise_key = (current["subject"], current["trial"], current["emg_file"])
-        if ch in ch_list:
-            ch_list = [c for c in ch_list if c != ch]
-        else:
-            ch_list = ch_list + [ch]
-        noise[noise_key] = (score, ch_list)
-        current["noise"] = noise[noise_key]
-        render()
-
     if not items:
         raise SystemExit("No trials found with logs")
 
     load_current()
     fig = plt.figure(figsize=(12, 8))
     fig.canvas.mpl_connect("key_press_event", on_key)
-    fig.canvas.mpl_connect("button_press_event", on_click)
     render()
     plt.show()
 
