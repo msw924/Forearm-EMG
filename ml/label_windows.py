@@ -306,6 +306,8 @@ def main():
             current["noise"] = noise[noise_key]
         elif event.key in ("enter", "n"):
             persist_current_offsets()
+            save_offsets(offsets_path, offsets)
+            save_noise(noise_path, noise)
             label_idx += 1
             if label_idx >= len(current["labels"]):
                 label_idx = 0
@@ -337,12 +339,18 @@ def main():
             return
         render()
 
+    def on_close(_event):
+        persist_current_offsets()
+        save_offsets(offsets_path, offsets)
+        save_noise(noise_path, noise)
+
     if not items:
         raise SystemExit("No trials found with logs")
 
     load_current()
     fig = plt.figure(figsize=(12, 8))
     fig.canvas.mpl_connect("key_press_event", on_key)
+    fig.canvas.mpl_connect("close_event", on_close)
     render()
     plt.show()
 
