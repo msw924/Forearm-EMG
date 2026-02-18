@@ -94,7 +94,28 @@ def save_polar_line(rms_vals, out_path, rms_vmin, rms_vmax):
     plt.close(fig)
 
 
-def save_emg_rms_image(seg, out_path, rms_vmin, rms_vmax, bins=256):
+def channel_base_color(ch_idx):
+    # Piecewise gradient with blue bands at ch10-14 and ch24-30.
+    anchors = [
+        (4.0, (1.0, 0.0, 0.0)),   # red
+        (12.0, (0.0, 0.0, 1.0)),  # blue band
+        (20.0, (0.0, 1.0, 0.0)),  # green peak
+        (28.0, (0.0, 0.0, 1.0)),  # blue band
+        (32.0, (0.0, 0.0, 1.0)),  # blue tail
+    ]
+    ch = float(ch_idx)
+    if ch <= anchors[0][0]:
+        return np.array(anchors[0][1], dtype=float)
+    for (x0, c0), (x1, c1) in zip(anchors, anchors[1:]):
+        if ch <= x1:
+            t = (ch - x0) / (x1 - x0) if x1 > x0 else 0.0
+            c0 = np.array(c0, dtype=float)
+            c1 = np.array(c1, dtype=float)
+            return c0 * (1.0 - t) + c1 * t
+    return np.array(anchors[-1][1], dtype=float)
+
+
+def save_emg_rms_image(seg, out_path, rms_vmin, rms_vmax, bins=224, style="stripe7"):
     n = seg.shape[1]
     if n <= 0:
         return
@@ -113,8 +134,28 @@ def save_emg_rms_image(seg, out_path, rms_vmin, rms_vmax, bins=256):
         x_dst = np.linspace(0, 1, bins)
         rms_bins = np.vstack([np.interp(x_dst, x_src, row) for row in rms_bins])
     denom = rms_vmax - rms_vmin if rms_vmax > rms_vmin else 1.0
-    img = (rms_bins - rms_vmin) / denom
-    img = np.clip(img, 0.0, 1.0)
+    norm = (rms_bins - rms_vmin) / denom
+    norm = np.clip(norm, 0.0, 1.0)
+
+    if style == "stripe7":
+        height = 32 * 7
+        img = np.ones((height, bins, 3), dtype=float)
+        row_order = [3, 2, 4, 1, 5, 0, 6]
+        for ch in range(32):
+            base = channel_base_color(ch + 1)
+            row_base = ch * 7
+            for t_idx in range(bins):
+                level = norm[ch, t_idx]
+                n_rows = int(round(1 + level * 6))
+                n_rows = max(1, min(7, n_rows))
+                for i in range(n_rows):
+                    rr = row_base + row_order[i]
+                    img[rr, t_idx, :] = base
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        mpimg.imsave(out_path, img, vmin=0.0, vmax=1.0)
+        return
+
+    img = norm
     out_path.parent.mkdir(parents=True, exist_ok=True)
     mpimg.imsave(out_path, img, cmap="gray", vmin=0.0, vmax=1.0)
 
@@ -292,7 +333,9 @@ def main():
     ap.add_argument("--skip", type=str, default=None, help="CSV of trial skip info")
     ap.add_argument("--filtered-out", type=str, default=None, help="Output root for filtered EMG images")
     ap.add_argument("--emg-rms-out", type=str, default=None, help="Output root for EMG RMS images")
-    ap.add_argument("--rms-bins", type=int, default=256, help="Time bins for RMS image width")
+    ap.add_argument("--rms-bins", type=int, default=224, help="Time bins for RMS image width")
+    ap.add_argument("--emg-rms-style", type=str, default="stripe7", choices=["stripe7", "gray"])
+    ap.add_argument("--trial", type=str, default=None, help="Only process a specific trial directory name")
     ap.add_argument("--bandpass-low", type=float, default=20.0)
     ap.add_argument("--bandpass-high", type=float, default=250.0)
     ap.add_argument("--notch", type=str, default="50,60")
@@ -350,6 +393,8 @@ def main():
         jitter_offsets = np.linspace(-args.jitter_sec, args.jitter_sec, args.jitters).tolist()
 
     for subject_dir, trial_dir, emg_path, aux_path, log_path in iter_trials(subjects_list, subjects_range):
+        if args.trial and trial_dir.name != args.trial:
+            continue
         signal = load_emg(emg_path)
         noise_key = (subject_dir.name, trial_dir.name, emg_path.name)
         noise_score = None
@@ -404,7 +449,14 @@ def main():
 
                 save_emg_segment_image(seg, fs, emg_out, amp_ref, ds=args.ds)
                 if rms_out:
-                    save_emg_rms_image(seg, rms_out, rms_min, rms_max, bins=args.rms_bins)
+                    save_emg_rms_image(
+                        seg,
+                        rms_out,
+                        rms_min,
+                        rms_max,
+                        bins=args.rms_bins,
+                        style=args.emg_rms_style,
+                    )
                 if filtered_emg_root and filtered_amp_ref:
                     filt_seg = apply_fft_filter(seg, bandpass, notch_freqs, args.notch_width)
                     filt_out = filtered_emg_root / label_dir / base
