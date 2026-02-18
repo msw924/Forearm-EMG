@@ -269,10 +269,10 @@ def main():
         selected_ch = drop_idx + 1
         fig.text(
             0.01,
-            0.93,
+            0.02,
             f"Select drop: up/down | Toggle: space | Clear: 0 | Selected: Ch{selected_ch:02d}",
             ha="left",
-            va="top",
+            va="bottom",
             fontsize=9,
             bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.7),
         )
