@@ -270,7 +270,7 @@ def main():
         fig.text(
             0.01,
             0.93,
-            f"Select drop: up/down or w/s | Toggle: space | Clear: 0 | Selected: Ch{selected_ch:02d}",
+            f"Select drop: up/down | Toggle: space | Clear: 0 | Selected: Ch{selected_ch:02d}",
             ha="left",
             va="top",
             fontsize=9,
@@ -290,9 +290,9 @@ def main():
             set_offset(get_offset() + args.big_step)
         elif event.key == "shift+left":
             set_offset(get_offset() - args.big_step)
-        elif event.key in ("up", "w"):
+        elif event.key == "up":
             drop_idx = min(drop_idx + 1, current["channels"] - 1)
-        elif event.key in ("down", "s"):
+        elif event.key == "down":
             drop_idx = max(drop_idx - 1, 0)
         elif event.key == " ":
             ch = drop_idx + 1
