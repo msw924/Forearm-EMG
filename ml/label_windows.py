@@ -269,7 +269,7 @@ def main():
         fig.text(
             0.01,
             0.93,
-            "Select drop: up/down | Toggle: enter | Clear: 0",
+            "Select drop: up/down | Toggle: space | Clear: 0",
             ha="left",
             va="top",
             fontsize=9,
@@ -293,7 +293,7 @@ def main():
             drop_idx = min(drop_idx + 1, current["channels"] - 1)
         elif event.key == "down":
             drop_idx = max(drop_idx - 1, 0)
-        elif event.key == "enter":
+        elif event.key == " ":
             ch = drop_idx + 1
             score, ch_list = current["noise"]
             noise_key = (current["subject"], current["trial"], current["emg_file"])
