@@ -58,7 +58,7 @@ def select_subject_dirs(subjects_list=None, subjects_range=None):
 def iter_trials(subjects_list=None, subjects_range=None, trials_list=None):
     subject_dirs = select_subject_dirs(subjects_list, subjects_range)
     for subject_dir in subject_dirs:
-        trial_dirs = sorted([p for p in subject_dir.iterdir() if p.is_dir() and p.name.lower().startswith("trial ")])
+        trial_dirs = sorted([p for p in subject_dir.iterdir() if p.is_dir() and p.name.lower().startswith("trial")])
         if trials_list:
             name_set = set(trials_list)
             trial_dirs = [p for p in trial_dirs if p.name in name_set]

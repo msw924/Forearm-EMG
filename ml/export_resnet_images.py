@@ -244,7 +244,7 @@ def select_subject_dirs(subjects_list=None, subjects_range=None):
 def iter_trials(subjects_list=None, subjects_range=None):
     subject_dirs = select_subject_dirs(subjects_list, subjects_range)
     for subject_dir in subject_dirs:
-        trial_dirs = sorted([p for p in subject_dir.glob(trial_glob) if p.is_dir()])
+        trial_dirs = sorted([p for p in subject_dir.iterdir() if p.is_dir() and p.name.lower().startswith("trial")])
         for trial_dir in trial_dirs:
             emg_files = sorted(trial_dir.glob(f"*_M02{sensor_unit}_EMG_raw.sig"))
             if not emg_files:
