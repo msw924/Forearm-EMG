@@ -126,6 +126,7 @@ def main():
     ap.add_argument("--big-step", type=float, default=0.5)
     ap.add_argument("--pre", type=float, default=15.0, help="Seconds before label to show")
     ap.add_argument("--post", type=float, default=15.0, help="Seconds after label to show")
+    ap.add_argument("--window-sec", type=float, default=8.0, help="Window length after start (seconds)")
     ap.add_argument("--reset", action="store_true", help="Ignore existing offsets and start fresh")
     args = ap.parse_args()
 
@@ -216,8 +217,7 @@ def main():
         for i, (t0, label) in enumerate(zip(current["move_starts"], current["labels"])):
             offset = get_offset(i)
             start_t = t0 + offset
-            window = current["move_duration"] - offset if current["move_duration"] else 0.0
-            end_t = start_t + max(window, 0.0)
+            end_t = start_t + max(args.window_sec, 0.0)
             is_current = i == label_idx
             base_color = "k" if is_current else "0.4"
             start_color = "g" if is_current else "0.6"
