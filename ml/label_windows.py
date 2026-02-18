@@ -266,10 +266,11 @@ def main():
             fontsize=11,
             bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.9),
         )
+        selected_ch = drop_idx + 1
         fig.text(
             0.01,
             0.93,
-            "Select drop: up/down | Toggle: space | Clear: 0",
+            f"Select drop: up/down or w/s | Toggle: space | Clear: 0 | Selected: Ch{selected_ch:02d}",
             ha="left",
             va="top",
             fontsize=9,
@@ -289,9 +290,9 @@ def main():
             set_offset(get_offset() + args.big_step)
         elif event.key == "shift+left":
             set_offset(get_offset() - args.big_step)
-        elif event.key == "up":
+        elif event.key in ("up", "w"):
             drop_idx = min(drop_idx + 1, current["channels"] - 1)
-        elif event.key == "down":
+        elif event.key in ("down", "s"):
             drop_idx = max(drop_idx - 1, 0)
         elif event.key == " ":
             ch = drop_idx + 1
