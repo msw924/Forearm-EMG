@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# OS
+.DS_Store
+
+# Large data / generated outputs
+_cache_emg/
+_cache_emg
+*.sig
+*.rtf
+*.pdf
+*.txt
+*.pkl
+*.npy
+*.npz
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+
+# Datasets / runs
+runs_*/
+dataset_*/
+
+# Local configs
+.env

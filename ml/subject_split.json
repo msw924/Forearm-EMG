@@ -1,0 +1,12 @@
+{
+  "train": [],
+  "val": [],
+  "test": [
+    "(02)Bosco",
+    "(03)Manon",
+    "(04)Marie",
+    "(05)RubyA",
+    "(06)Arsh"
+  ],
+  "seed": 42
+}
