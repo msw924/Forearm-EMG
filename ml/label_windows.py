@@ -304,7 +304,7 @@ def main():
                 ch_list = ch_list + [ch]
             noise[noise_key] = (score, ch_list)
             current["noise"] = noise[noise_key]
-        elif event.key == "n":
+        elif event.key in ("enter", "n"):
             persist_current_offsets()
             label_idx += 1
             if label_idx >= len(current["labels"]):
