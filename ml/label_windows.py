@@ -81,7 +81,7 @@ def stacked_emg_plot(signal, ds=10):
     amp = np.max(np.abs(sig))
     offset = 1.2 * amp if amp > 0 else 1.0
     y = sig + offset * np.arange(sig.shape[0])[:, None]
-    return tt, y
+    return tt, y, offset
 
 
 def compute_trial_noise(signal):
@@ -212,7 +212,8 @@ def main():
         plt.clf()
         fig = plt.gcf()
         ax = plt.gca()
-        tt, y = stacked_emg_plot(current["signal"], ds=args.ds)
+        tt, y, y_offset = stacked_emg_plot(current["signal"], ds=args.ds)
+        current["y_offset"] = y_offset
         ax.plot(tt, y.T, linewidth=0.3)
         for i, (t0, label) in enumerate(zip(current["move_starts"], current["labels"])):
             offset = get_offset(i)
@@ -260,7 +261,7 @@ def main():
         fig.text(
             0.01,
             0.93,
-            "Set drop: up/down | Clear: 0",
+            "Click channel to drop | Clear: 0",
             ha="left",
             va="top",
             fontsize=9,
@@ -328,12 +329,28 @@ def main():
             return
         render()
 
+    def on_click(event):
+        if event.inaxes is None or event.ydata is None:
+            return
+        y_offset = current.get("y_offset")
+        if not y_offset:
+            return
+        ch_idx = int(round(event.ydata / y_offset))
+        ch_idx = max(0, min(ch_idx, current["channels"] - 1))
+        ch = ch_idx + 1
+        score, _ = current["noise"]
+        noise_key = (current["subject"], current["trial"], current["emg_file"])
+        noise[noise_key] = (score, ch)
+        current["noise"] = noise[noise_key]
+        render()
+
     if not items:
         raise SystemExit("No trials found with logs")
 
     load_current()
     fig = plt.figure(figsize=(12, 8))
     fig.canvas.mpl_connect("key_press_event", on_key)
+    fig.canvas.mpl_connect("button_press_event", on_click)
     render()
     plt.show()
 
