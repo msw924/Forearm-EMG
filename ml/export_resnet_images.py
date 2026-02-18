@@ -193,18 +193,23 @@ def apply_fft_filter(signal, bandpass, notch_freqs, notch_width):
 
 
 def apply_drop_channel(signal, excluded_channel):
-    if excluded_channel is None:
+    if not excluded_channel:
         return signal
-    idx = excluded_channel - 1
-    if idx < 0 or idx >= signal.shape[0]:
-        return signal
-    out = signal.copy()
-    if idx == 0:
-        out[idx, :] = out[idx + 1, :]
-    elif idx == signal.shape[0] - 1:
-        out[idx, :] = out[idx - 1, :]
+    if isinstance(excluded_channel, int):
+        excluded = [excluded_channel]
     else:
-        out[idx, :] = 0.5 * (out[idx - 1, :] + out[idx + 1, :])
+        excluded = list(excluded_channel)
+    out = signal.copy()
+    for ch in sorted(set(excluded)):
+        idx = ch - 1
+        if idx < 0 or idx >= out.shape[0]:
+            continue
+        if idx == 0:
+            out[idx, :] = out[idx + 1, :]
+        elif idx == out.shape[0] - 1:
+            out[idx, :] = out[idx - 1, :]
+        else:
+            out[idx, :] = 0.5 * (out[idx - 1, :] + out[idx + 1, :])
     return out
 
 
@@ -372,9 +377,12 @@ def main():
             reader = csv.DictReader(f)
             for row in reader:
                 key = (row["subject"], row["trial"], row["emg_file"])
-                ch_raw = row.get("excluded_channel", "").strip()
-                excluded = int(ch_raw) if ch_raw else None
-                noise[key] = (float(row["noise_score"]), excluded)
+            ch_raw = row.get("excluded_channels", "").strip()
+            if ch_raw:
+                excluded = [int(c) for c in ch_raw.split(",") if c.strip().isdigit()]
+            else:
+                excluded = []
+            noise[key] = (float(row["noise_score"]), excluded)
     skip = load_skip(args.skip)
     bandpass = (args.bandpass_low, args.bandpass_high)
     notch_freqs = parse_notch_list(args.notch)

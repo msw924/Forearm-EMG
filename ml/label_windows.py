@@ -98,8 +98,11 @@ def load_noise(path):
         reader = csv.DictReader(f)
         for row in reader:
             key = (row["subject"], row["trial"], row["emg_file"])
-            ch_raw = row.get("excluded_channel", "").strip()
-            excluded = int(ch_raw) if ch_raw else None
+            ch_raw = row.get("excluded_channels", "").strip()
+            if ch_raw:
+                excluded = [int(c) for c in ch_raw.split(",") if c.strip().isdigit()]
+            else:
+                excluded = []
             noise[key] = (float(row["noise_score"]), excluded)
     return noise
 
@@ -108,10 +111,10 @@ def save_noise(path, noise):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["subject", "trial", "emg_file", "noise_score", "excluded_channel"])
-        for (subject, trial, emg_file), (score, ch) in noise.items():
-            ch_val = "" if ch is None else ch
-            writer.writerow([subject, trial, emg_file, f"{score:.6f}", ch_val])
+        writer.writerow(["subject", "trial", "emg_file", "noise_score", "excluded_channels"])
+        for (subject, trial, emg_file), (score, ch_list) in noise.items():
+            ch_vals = ",".join(f"{c:d}" for c in sorted(set(ch_list)))
+            writer.writerow([subject, trial, emg_file, f"{score:.6f}", ch_vals])
 
 
 def main():
@@ -171,7 +174,8 @@ def main():
                 continue
             noise_key = (subject_dir.name, trial_dir.name, emg_path.name)
             if noise_key not in noise:
-                noise[noise_key] = compute_trial_noise(signal)
+                score, _ = compute_trial_noise(signal)
+                noise[noise_key] = (score, [])
             current = {
                 "subject": subject_dir.name,
                 "trial": trial_dir.name,
@@ -242,7 +246,10 @@ def main():
         label = current["labels"][label_idx]
         offset = get_offset()
         noise_score, excluded_channel = current["noise"]
-        drop_text = "None" if excluded_channel is None else f"Ch{excluded_channel:02d}"
+        if not excluded_channel:
+            drop_text = "None"
+        else:
+            drop_text = ", ".join(f"Ch{c:02d}" for c in sorted(set(excluded_channel)))
         fig.suptitle(
             f"{title}\nactive: {label} | offset={offset:.3f}s | noise={noise_score:.4g}",
             fontsize=11,
@@ -297,25 +304,10 @@ def main():
             label_idx -= 1
             if label_idx < 0:
                 label_idx = 0
-        elif event.key == "up":
-            score, ch = current["noise"]
-            ch = 1 if ch is None else min(ch + 1, current["channels"])
-            noise_key = (current["subject"], current["trial"], current["emg_file"])
-            noise[noise_key] = (score, ch)
-            current["noise"] = noise[noise_key]
-        elif event.key == "down":
-            score, ch = current["noise"]
-            if ch is None:
-                ch = current["channels"]
-            else:
-                ch = max(ch - 1, 1)
-            noise_key = (current["subject"], current["trial"], current["emg_file"])
-            noise[noise_key] = (score, ch)
-            current["noise"] = noise[noise_key]
         elif event.key == "0":
             score, _ = current["noise"]
             noise_key = (current["subject"], current["trial"], current["emg_file"])
-            noise[noise_key] = (score, None)
+            noise[noise_key] = (score, [])
             current["noise"] = noise[noise_key]
         elif event.key == "s":
             persist_current_offsets()
@@ -338,9 +330,13 @@ def main():
         ch_idx = int(round(event.ydata / y_offset))
         ch_idx = max(0, min(ch_idx, current["channels"] - 1))
         ch = ch_idx + 1
-        score, _ = current["noise"]
+        score, ch_list = current["noise"]
         noise_key = (current["subject"], current["trial"], current["emg_file"])
-        noise[noise_key] = (score, ch)
+        if ch in ch_list:
+            ch_list = [c for c in ch_list if c != ch]
+        else:
+            ch_list = ch_list + [ch]
+        noise[noise_key] = (score, ch_list)
         current["noise"] = noise[noise_key]
         render()
 
