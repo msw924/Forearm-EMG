@@ -115,7 +115,7 @@ def channel_base_color(ch_idx):
     return np.array(anchors[-1][1], dtype=float)
 
 
-def save_emg_rms_image(seg, out_path, rms_vmin, rms_vmax, bins=224, style="stripe7"):
+def save_emg_rms_image(seg, out_path, rms_vmin, rms_vmax, bins=224, style="stripe7", shifts=None):
     n = seg.shape[1]
     if n <= 0:
         return
@@ -152,12 +152,28 @@ def save_emg_rms_image(seg, out_path, rms_vmin, rms_vmax, bins=224, style="strip
                     rr = row_base + row_order[i]
                     img[rr, t_idx, :] = base
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        mpimg.imsave(out_path, img, vmin=0.0, vmax=1.0)
+        if not shifts:
+            mpimg.imsave(out_path, img, vmin=0.0, vmax=1.0)
+        else:
+            for frac in shifts:
+                shift_cols = int(round(frac * bins))
+                shifted = np.roll(img, shift_cols, axis=1)
+                suffix = f"_shift{int(round(frac*100)):02d}"
+                out_shift = out_path.with_name(out_path.stem + suffix + out_path.suffix)
+                mpimg.imsave(out_shift, shifted, vmin=0.0, vmax=1.0)
         return
 
     img = norm
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    mpimg.imsave(out_path, img, cmap="gray", vmin=0.0, vmax=1.0)
+    if not shifts:
+        mpimg.imsave(out_path, img, cmap="gray", vmin=0.0, vmax=1.0)
+    else:
+        for frac in shifts:
+            shift_cols = int(round(frac * bins))
+            shifted = np.roll(img, shift_cols, axis=1)
+            suffix = f"_shift{int(round(frac*100)):02d}"
+            out_shift = out_path.with_name(out_path.stem + suffix + out_path.suffix)
+            mpimg.imsave(out_shift, shifted, cmap="gray", vmin=0.0, vmax=1.0)
 
 
 def safe_label(label):
@@ -340,6 +356,7 @@ def main():
     ap.add_argument("--emg-rms-out", type=str, default=None, help="Output root for EMG RMS images")
     ap.add_argument("--rms-bins", type=int, default=224, help="Time bins for RMS image width")
     ap.add_argument("--emg-rms-style", type=str, default="stripe7", choices=["stripe7", "gray"])
+    ap.add_argument("--rms-shifts", type=str, default=None, help="Comma-separated fractional shifts (e.g., 0,0.2,0.4)")
     ap.add_argument("--trial", type=str, default=None, help="Only process a specific trial directory name")
     ap.add_argument("--bandpass-low", type=float, default=20.0)
     ap.add_argument("--bandpass-high", type=float, default=250.0)
@@ -399,6 +416,9 @@ def main():
     jitter_offsets = [0.0]
     if args.jitters > 1:
         jitter_offsets = np.linspace(-args.jitter_sec, args.jitter_sec, args.jitters).tolist()
+    rms_shifts = None
+    if args.rms_shifts:
+        rms_shifts = [float(v.strip()) for v in args.rms_shifts.split(",") if v.strip()]
 
     for subject_dir, trial_dir, emg_path, aux_path, log_path in iter_trials(subjects_list, subjects_range):
         if args.trial and trial_dir.name != args.trial:
@@ -464,6 +484,7 @@ def main():
                         rms_max,
                         bins=args.rms_bins,
                         style=args.emg_rms_style,
+                        shifts=rms_shifts,
                     )
                 if filtered_emg_root and filtered_amp_ref:
                     filt_seg = apply_fft_filter(seg, bandpass, notch_freqs, args.notch_width)
