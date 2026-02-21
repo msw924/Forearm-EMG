@@ -113,8 +113,8 @@ def main():
     ap.add_argument("--offsets", type=str, default=None, help="Manual offsets CSV")
     ap.add_argument("--noise", type=str, default=None, help="Trial noise CSV")
     ap.add_argument("--label", type=str, default="Wrist Extension")
-    ap.add_argument("--center", type=int, default=20, help="Expected extensor center channel")
-    ap.add_argument("--band", type=int, default=5, help="Allowed +/- band around center")
+    ap.add_argument("--top-k", type=int, default=5, help="Number of top channels to summarize")
+    ap.add_argument("--z-thresh", type=float, default=2.0, help="Z-score threshold for 'significant' channels")
     args = ap.parse_args()
 
     subjects_list = [v.strip() for v in args.subjects.split(",")] if args.subjects else None
@@ -170,11 +170,21 @@ def main():
         rms = np.sqrt(np.mean(seg * seg, axis=1))
         total = float(np.sum(rms)) if np.sum(rms) > 0 else 1.0
 
-        peak_idx = int(np.argmax(rms)) + 1
-        dist = abs(peak_idx - args.center)
-        band_start = max(1, args.center - args.band)
-        band_end = min(32, args.center + args.band)
-        band_ratio = float(np.sum(rms[band_start - 1 : band_end])) / total
+        order = np.argsort(rms)[::-1]
+        top_k = min(args.top_k, rms.size)
+        top_idx = (order[:top_k] + 1).tolist()
+        top_sum = float(np.sum(rms[order[:top_k]]))
+        top_ratio = top_sum / total
+
+        mean = float(np.mean(rms))
+        std = float(np.std(rms))
+        z = (rms - mean) / (std if std > 0 else 1.0)
+        sig_idx = (np.flatnonzero(z >= args.z_thresh) + 1).tolist()
+        sig_count = len(sig_idx)
+        sig_ratio = float(np.sum(rms[[i - 1 for i in sig_idx]])) / total if sig_idx else 0.0
+
+        peak_idx = int(order[0]) + 1
+        peak_to_median = float(rms[order[0]] / (np.median(rms) if np.median(rms) > 0 else 1.0))
 
         rows.append(
             {
@@ -183,10 +193,14 @@ def main():
                 "emg_file": emg_path.name,
                 "label": labels[idx],
                 "peak_channel": peak_idx,
-                "peak_dist": dist,
-                "band_start": band_start,
-                "band_end": band_end,
-                "band_ratio": band_ratio,
+                "peak_channel": peak_idx,
+                "top_k": top_k,
+                "top_channels": ";".join(str(i) for i in top_idx),
+                "top_ratio": top_ratio,
+                "sig_count": sig_count,
+                "sig_channels": ";".join(str(i) for i in sig_idx),
+                "sig_ratio": sig_ratio,
+                "peak_to_median": peak_to_median,
             }
         )
 
@@ -199,10 +213,13 @@ def main():
                 "emg_file",
                 "label",
                 "peak_channel",
-                "peak_dist",
-                "band_start",
-                "band_end",
-                "band_ratio",
+                "top_k",
+                "top_channels",
+                "top_ratio",
+                "sig_count",
+                "sig_channels",
+                "sig_ratio",
+                "peak_to_median",
             ],
         )
         writer.writeheader()
