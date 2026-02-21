@@ -5,10 +5,11 @@ import shutil
 from pathlib import Path
 
 
-def iter_samples(src_root):
+def iter_samples(src_root, exts):
     for cls_dir in sorted(p for p in src_root.iterdir() if p.is_dir()):
-        for f in sorted(cls_dir.glob("*.npy")):
-            yield cls_dir.name, f
+        for ext in exts:
+            for f in sorted(cls_dir.glob(f"*{ext}")):
+                yield cls_dir.name, f
 
 
 def subject_from_name(name):
@@ -27,20 +28,22 @@ def copy_or_link(src, dst, link):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--src", required=True, help="Root folder with class subfolders (.npy)")
+    ap.add_argument("--src", required=True, help="Root folder with class subfolders")
     ap.add_argument("--dst", required=True, help="Output folder for train/val/test")
     ap.add_argument("--test-subjects", type=int, default=7)
     ap.add_argument("--val-subjects", type=int, default=2)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--link", action="store_true", help="Symlink instead of copy")
     ap.add_argument("--out-splits", type=str, default=None, help="Optional JSON summary path")
+    ap.add_argument("--exts", type=str, default=".png,.npy", help="Comma-separated extensions to include")
     args = ap.parse_args()
 
     src_root = Path(args.src)
     dst_root = Path(args.dst)
-    samples = list(iter_samples(src_root))
+    exts = [e.strip() for e in args.exts.split(",") if e.strip()]
+    samples = list(iter_samples(src_root, exts))
     if not samples:
-        raise SystemExit("No .npy samples found in src.")
+        raise SystemExit("No samples found in src with the requested extensions.")
 
     subjects = sorted({subject_from_name(f.name) for _, f in samples})
     rng = random.Random(args.seed)
