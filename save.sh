@@ -11,6 +11,7 @@ git add \
   .githooks/ \
   .vscode/ \
   README.md \
+  save.sh \
   code/ \
   docs/ \
   reports/tables/

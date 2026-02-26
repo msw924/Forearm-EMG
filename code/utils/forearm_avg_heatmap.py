@@ -133,8 +133,14 @@ def main():
                     help="Movement label (default: 'Wrist Extension')")
     ap.add_argument("--offsets", default=None, help="Offsets CSV path")
     ap.add_argument("--noise", default=None, help="Trial noise CSV path")
-    ap.add_argument("--radius", type=float, default=0.55,
-                    help="Electrode ring radius as fraction of image min dim")
+    ap.add_argument("--rx", type=float, default=0.42,
+                    help="Horizontal ellipse radius as fraction of image width")
+    ap.add_argument("--ry", type=float, default=0.50,
+                    help="Vertical ellipse radius as fraction of image height")
+    ap.add_argument("--cx", type=float, default=0.50,
+                    help="Ellipse centre x as fraction of image width")
+    ap.add_argument("--cy", type=float, default=0.50,
+                    help="Ellipse centre y as fraction of image height")
     ap.add_argument("--step-deg", type=float, default=360.0 / 32.0)
     ap.add_argument("--ch15-deg", type=float, default=0.0)
     ap.add_argument("--clockwise", action="store_true",
@@ -167,8 +173,9 @@ def main():
     if args.rotate_180:
         img = np.rot90(img, 2)
     h, w = img.shape[:2]
-    center = (w / 2.0, h / 2.0)
-    radius = args.radius * min(w, h)
+    center = (args.cx * w, args.cy * h)
+    rx = args.rx * w
+    ry = args.ry * h
 
     angles = channel_angles_deg(
         32,
@@ -180,8 +187,9 @@ def main():
     if args.rotate_180:
         angles = angles + np.pi
 
-    xs = center[0] + radius * np.cos(angles)
-    ys = center[1] + radius * np.sin(angles)
+    xs = center[0] + rx * np.cos(angles)
+    ys = center[1] + ry * np.sin(angles)
+
 
     rms_for_color = rms_avg
     if args.log_scale:
