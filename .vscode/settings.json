@@ -1,0 +1,12 @@
+{
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/*.pyc": true
+  },
+  "search.exclude": {
+    "_cache_emg": true,
+    "**/__pycache__": true
+  }
+}

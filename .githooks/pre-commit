@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Block commits if critical files are missing or empty.
+CRITICAL_FILES=(
+  "code/preprocessing/export_resnet_images.py"
+  "code/labeling/label_windows.py"
+  "code/training/train_resnet18.py"
+  "code/utils/EMG_opener.py"
+)
+
+fail=0
+for f in "${CRITICAL_FILES[@]}"; do
+  if [[ ! -f "$f" ]]; then
+    echo "ERROR: Missing critical file: $f" >&2
+    fail=1
+    continue
+  fi
+  if [[ ! -s "$f" ]]; then
+    echo "ERROR: Critical file is empty: $f" >&2
+    fail=1
+  fi
+  if [[ ! -r "$f" ]]; then
+    echo "ERROR: Critical file is not readable: $f" >&2
+    fail=1
+  fi
+  if [[ -f "$f" ]]; then
+    # Optional sanity: ensure file has at least one non-whitespace char.
+    if ! grep -q "[^[:space:]]" "$f"; then
+      echo "ERROR: Critical file has no content (only whitespace): $f" >&2
+      fail=1
+    fi
+  fi
+  done
+
+if [[ $fail -ne 0 ]]; then
+  echo "Commit blocked. Fix critical files and retry." >&2
+  exit 1
+fi

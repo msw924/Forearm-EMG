@@ -24,10 +24,25 @@ _cache_emg
 *.jpeg
 *.tif
 *.tiff
+*.heic
+*.HEIC
+*.mov
+*.MOV
+*.mp4
+*.MP4
 
 # Datasets / runs
+datasets/
+runs/
 runs_*/
 dataset_*/
+
+# Archives
+*.zip
+
+# Environments / temp
+.venv/
+tmp/
 
 # Local configs
 .env

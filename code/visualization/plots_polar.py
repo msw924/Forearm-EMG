@@ -26,11 +26,16 @@ def plot_polar(rms_mat, valid_labels, title):
     denom = vmax - vmin if vmax > vmin else 1.0
     base_radius = 1.0
     scale = 0.3
-    angles = np.linspace(0, 2 * np.pi, rms_mat.shape[1], endpoint=False)
+    n_ch = rms_mat.shape[1]
+    # Offset so Ch20 (index 19) sits at the top, matching the forearm cross-section heatmap
+    # where Ch20 is at 12 o'clock and channels increase clockwise.
+    angles = (np.linspace(0, 2 * np.pi, n_ch, endpoint=False) - 19 * (2 * np.pi / n_ch)) % (2 * np.pi)
     angles_closed = np.append(angles, angles[0])
 
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(111, projection="polar")
+    ax.set_theta_zero_location("N")   # 0° at top
+    ax.set_theta_direction(-1)        # clockwise
     ax.plot(np.linspace(0, 2 * np.pi, 200), [base_radius] * 200, color="gray", linewidth=0.8)
     colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown"]
     for label, idx, color in zip(target_labels, target_indices, colors):
